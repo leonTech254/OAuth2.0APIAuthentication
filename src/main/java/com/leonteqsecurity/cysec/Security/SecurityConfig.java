@@ -23,6 +23,7 @@ import org.springframework.security.oauth2.jwt.NimbusJwtEncoder;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
 import org.springframework.security.oauth2.server.resource.authentication.JwtGrantedAuthoritiesConverter;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
 @Configuration
 public class SecurityConfig {
@@ -47,31 +48,32 @@ public class SecurityConfig {
         return new ProviderManager(daoAuthenticationProvider);
     }
 
+
     @Bean
-    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+    public SecurityFilterChain securityFilterChain(HttpSecurity http, HeaderCaptureFilter headerCaptureFilter) throws Exception {
         http
                 .csrf().disable()
+                .addFilterBefore(headerCaptureFilter, UsernamePasswordAuthenticationFilter.class) // Adjust the filter position
                 .authorizeRequests(authorize -> {
                     authorize.requestMatchers(
                             "/api/v1/movies/",
                             "/api/v1/auth/login/**"
                     ).permitAll();
                     authorize.requestMatchers("/admin").hasRole("ADMIN");
-                    authorize.requestMatchers("/admin").hasAnyRole("ADMIN","USER");
+                    authorize.requestMatchers("/admin").hasAnyRole("ADMIN", "USER");
 
                     authorize
                             .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                             .anyRequest()
                             .authenticated();
-
                 });
         http.oauth2ResourceServer()
                 .jwt()
                 .jwtAuthenticationConverter(jwtAuthenticationConverter());
-        http.sessionManagement(session->session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-        ;
+        http.sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS));
         return http.build();
     }
+
 
 
     @Bean

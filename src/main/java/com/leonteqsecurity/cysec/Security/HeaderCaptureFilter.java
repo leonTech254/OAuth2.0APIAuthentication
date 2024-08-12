@@ -40,7 +40,15 @@ public class HeaderCaptureFilter extends OncePerRequestFilter {
             // Log or process the headers if they are present
             System.out.println("X-API-Key: " + apiKey);
             System.out.println("X-App-Id: " + appId);
-            System.out.println(apiKeyService.validateApiKey(apiKey));
+            boolean apiKey1=apiKeyService.validateApiKey(apiKey);
+            boolean appId1=apiKeyService.validateAppId(appId);
+            if (apiKey1 && appId1) {
+                response.setStatus(HttpStatus.OK.value());
+            }else {
+                response.setStatus(HttpStatus.UNAUTHORIZED.value());
+                response.getWriter().write("authorized keys are required.");
+                return;
+            }
         }
 
         // Continue with the filter chain

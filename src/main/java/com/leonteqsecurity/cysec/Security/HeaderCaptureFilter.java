@@ -1,5 +1,6 @@
 package com.leonteqsecurity.cysec.Security;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -10,6 +11,8 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Objects;
 
 @Component
@@ -17,6 +20,7 @@ import java.util.Objects;
 public class HeaderCaptureFilter extends OncePerRequestFilter {
 
     private final ApiKeyService apiKeyService;
+    private final ObjectMapper objectMapper; // Jackson ObjectMapper for JSON serialization
 
     @Override
     protected void doFilterInternal(HttpServletRequest request,
@@ -31,27 +35,35 @@ public class HeaderCaptureFilter extends OncePerRequestFilter {
 
             // Check if headers are missing
             if (Objects.isNull(apiKey) || Objects.isNull(appId)) {
-                // Return a 400 Bad Request status with a message
+                // Return a 400 Bad Request status with a JSON message
                 response.setStatus(HttpStatus.BAD_REQUEST.value());
-                response.getWriter().write("Missing headers: X-API-Key and X-App-Id are required.");
+                response.setContentType("application/json");
+                response.getWriter().write(createJsonResponse("Missing headers: X-API-Key and X-App-Id are required."));
                 return;
             }
 
             // Log or process the headers if they are present
             System.out.println("X-API-Key: " + apiKey);
             System.out.println("X-App-Id: " + appId);
-            boolean apiKey1=apiKeyService.validateApiKey(apiKey);
-            boolean appId1=apiKeyService.validateAppId(appId);
-            if (apiKey1 && appId1) {
+            boolean apiKeyValid = apiKeyService.validateApiKey(apiKey);
+            boolean appIdValid = apiKeyService.validateAppId(appId);
+            if (apiKeyValid && appIdValid) {
                 response.setStatus(HttpStatus.OK.value());
-            }else {
+            } else {
                 response.setStatus(HttpStatus.UNAUTHORIZED.value());
-                response.getWriter().write("authorized keys are required.");
+                response.setContentType("application/json");
+                response.getWriter().write(createJsonResponse("Authorized keys are required."));
                 return;
             }
         }
 
         // Continue with the filter chain
         filterChain.doFilter(request, response);
+    }
+
+    private String createJsonResponse(String message) throws IOException {
+        Map<String, String> responseMap = new HashMap<>();
+        responseMap.put("message", message);
+        return objectMapper.writeValueAsString(responseMap);
     }
 }
